@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receipt Generator</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;padding:24px}
+:root{
+  --form-bg:#1e293b;
+  --card-bg:#0f172a;
+  --border:#334155;
+  --text:#e2e8f0;
+  --muted:#94a3b8;
+  --accent:#1D9E75;
+}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px;margin:0 auto;align-items:start}
+.panel{background:var(--form-bg);border-radius:16px;border:0.5px solid var(--border);padding:24px}
+.panel-title{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;padding:10px 12px;background:var(--card-bg);border:0.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);outline:none;transition:.15s}
+.field input:focus,.field select:focus{border-color:#1D9E75;box-shadow:0 0 0 3px rgba(29,158,117,.15)}
+.field select option{background:#1e293b;color:#e2e8f0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.upload-zone{border:1px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.upload-zone:hover{border-color:#1D9E75;background:rgba(29,158,117,.07)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone p{font-size:12px;color:var(--muted);margin-top:4px}
+#logoThumb{width:40px;height:40px;object-fit:contain;border-radius:6px;display:none;margin:0 auto 4px}
+.btn{width:100%;padding:11px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s}
+.btn-primary{background:#1D9E75;color:white}
+.btn-primary:hover{background:#0F6E56}
+.btn-secondary{background:transparent;color:var(--text);border:0.5px solid var(--border)}
+.btn-secondary:hover{background:var(--card-bg)}
+.btn+.btn{margin-top:10px}
+.divider{height:0.5px;background:var(--border);margin:20px 0}
+.history-list{max-height:160px;overflow-y:auto}
+.hist-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;cursor:pointer;transition:.1s}
+.hist-item:hover{background:var(--card-bg)}
+.hist-amount{font-weight:500;font-size:13px;color:var(--text)}
+.hist-to{font-size:12px;color:var(--muted)}
+.hist-date{font-size:11px;color:var(--muted)}
+.empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0}
+.receipt-wrap{background:var(--form-bg);border-radius:16px;border:0.5px solid var(--border);padding:24px;display:flex;flex-direction:column;align-items:center}
+#receiptCard{width:320px;background:#fff;border-radius:16px;overflow:hidden;font-family:Arial,sans-serif}
+.r-header{background:linear-gradient(135deg,#1D9E75 0%,#085041 100%);padding:28px 24px 20px;color:white;position:relative}
+.r-logo-circle{width:56px;height:56px;background:rgba(255,255,255,.18);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden}
+.r-logo-circle img{width:44px;height:44px;object-fit:contain}
+.r-icon-fallback{font-size:24px;color:white}
+.r-header h2{font-size:18px;font-weight:700;color:white;margin-bottom:2px}
+.r-header p{font-size:12px;color:rgba(255,255,255,.75)}
+.r-badge{position:absolute;top:20px;right:20px;background:rgba(255,255,255,.2);color:white;font-size:10px;padding:4px 10px;border-radius:999px;font-weight:600;letter-spacing:.04em}
+.r-amount-section{padding:20px 24px;border-bottom:1px solid #f0f0f0;text-align:center}
+.r-amount-label{font-size:11px;color:#888;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.r-amount{font-size:36px;font-weight:700;color:#111;letter-spacing:-.02em}
+.r-body{padding:20px 24px}
+.r-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f7f7f7}
+.r-row:last-child{border-bottom:none}
+.r-label{font-size:12px;color:#999;text-transform:uppercase;letter-spacing:.05em}
+.r-val{font-size:13px;color:#111;font-weight:500;text-align:right;max-width:60%}
+.r-footer{padding:16px 24px;background:#fafafa;border-top:1px solid #eee;display:flex;align-items:center;justify-content:space-between}
+.r-footer-text{font-size:10px;color:#aaa;line-height:1.5}
+.r-footer-text strong{display:block;font-size:11px;color:#555}
+.r-qr{width:52px;height:52px}
+.r-demo{text-align:center;padding:8px;font-size:10px;color:#aaa;background:#fff}
+.r-txn{font-size:10px;color:#bbb;font-family:monospace;letter-spacing:.03em}
+.placeholder-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.placeholder-state i{font-size:48px}
+.placeholder-state p{font-size:13px;margin-top:8px}
+
+@media(max-width:640px){
+  .wrap{grid-template-columns:1fr}
+  .row{grid-template-columns:1fr}
+  #receiptCard{width:100%}
+  body{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- FORM PANEL -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-receipt"></i> Receipt Details</div>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="logoInput" accept="image/*">
+      <img id="logoThumb" src="" alt="Logo preview">
+      <i class="ti ti-photo-up" style="font-size:22px;color:#64748b" id="uploadIcon"></i>
+      <p id="uploadText">Upload logo (optional)</p>
+    </div>
+
+    <div style="margin-top:16px"></div>
+
+    <div class="field">
+      <label>Currency</label>
+      <select id="currency">
+        <option value="₦">₦ Naira</option>
+        <option value="$">$ Dollar</option>
+        <option value="€">€ Euro</option>
+        <option value="£">£ Pound</option>
+        <option value="¥">¥ Yen</option>
+        <option value="₹">₹ Rupee</option>
+        <option value="C$">C$ Canadian Dollar</option>
+        <option value="A$">A$ Australian Dollar</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Amount</label>
+      <input type="number" id="amount" placeholder="0.00">
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>From</label>
+        <input type="text" id="from" placeholder="Sender name">
+      </div>
+      <div class="field">
+        <label>To</label>
+        <input type="text" id="to" placeholder="Recipient name">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Institution</label>
+        <input type="text" id="institution" placeholder="Bank / Platform">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <input type="text" id="desc" placeholder="Payment for...">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="generate()">
+      <i class="ti ti-sparkles"></i> Generate Receipt
+    </button>
+    <button class="btn btn-secondary" onclick="download()">
+      <i class="ti ti-download"></i> Download as Image
+    </button>
+
+    <div class="divider"></div>
+    <div class="panel-title"><i class="ti ti-history"></i> Recent Receipts</div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <!-- RECEIPT PREVIEW PANEL -->
+  <div class="receipt-wrap">
+    <div id="receiptCard">
+      <div class="placeholder-state">
+        <i class="ti ti-file-invoice"></i>
+        <p>Fill in the details and click Generate</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let logoData = "";
+let receiptGenerated = false;
+
+document.getElementById("logoInput").addEventListener("change", function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function() {
+    logoData = reader.result;
+    const thumb = document.getElementById("logoThumb");
+    thumb.src = logoData;
+    thumb.style.display = "block";
+    document.getElementById("uploadIcon").style.display = "none";
+    document.getElementById("uploadText").textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+});
+
+function txnId() {
+  return "TXN-" + Math.random().toString(36).substr(2, 8).toUpperCase();
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    + " · " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtAmount(cur, amt) {
+  return cur + parseFloat(amt).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function generate() {
+  const cur = document.getElementById("currency").value;
+  const amt = document.getElementById("amount").value || "0";
+  const from = document.getElementById("from").value || "—";
+  const to = document.getElementById("to").value || "—";
+  const inst = document.getElementById("institution").value || "—";
+  const desc = document.getElementById("desc").value || "—";
+  const id = txnId();
+  const now = new Date();
+  const date = fmtDate(now);
+  const data = { cur, amt, from, to, inst, desc, id, date };
+
+  const logoHtml = logoData
+    ? `<img src="${logoData}" style="width:44px;height:44px;object-fit:contain;">`
+    : `<i class="ti ti-building-bank r-icon-fallback"></i>`;
+
+  document.getElementById("receiptCard").innerHTML = `
+    <div class="r-header">
+      <div class="r-logo-circle">${logoHtml}</div>
+      <h2>Payment Receipt</h2>
+      <p>${inst}</p>
+      <span class="r-badge">✓ Verified</span>
+    </div>
+    <div class="r-amount-section">
+      <div class="r-amount-label">Total Amount</div>
+      <div class="r-amount">${fmtAmount(cur, amt)}</div>
+    </div>
+    <div class="r-body">
+      <div class="r-row"><span class="r-label">From</span><span class="r-val">${from}</span></div>
+      <div class="r-row"><span class="r-label">To</span><span class="r-val">${to}</span></div>
+      <div class="r-row"><span class="r-label">Description</span><span class="r-val">${desc}</span></div>
+      <div class="r-row"><span class="r-label">Date</span><span class="r-val">${date}</span></div>
+      <div class="r-row"><span class="r-label">Ref</span><span class="r-val r-txn">${id}</span></div>
+    </div>
+    <div class="r-footer">
+      <div class="r-footer-text">
+        <strong>${inst}</strong>
+        Keep this receipt for your records
+      </div>
+      <canvas id="qrCanvas" class="r-qr"></canvas>
+    </div>
+    <div class="r-demo">⚠ This is a demo receipt — not a legal document</div>
+  `;
+
+  QRCode.toCanvas(document.getElementById("qrCanvas"),
+    JSON.stringify({ id, amount: fmtAmount(cur, amt), from, to, date }),
+    { width: 52, margin: 0, color: { dark: "#1D9E75" } }
+  );
+
+  receiptGenerated = true;
+  saveHistory(data);
+  loadHistory();
+}
+
+function download() {
+  if (!receiptGenerated) { alert("Please generate a receipt first."); return; }
+  const card = document.getElementById("receiptCard");
+  html2canvas(card, { scale: 3, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "receipt-" + Date.now() + ".png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+}
+
+function saveHistory(data) {
+  let h = JSON.parse(localStorage.getItem("rcpts2") || "[]");
+  h.unshift(data);
+  h = h.slice(0, 10);
+  localStorage.setItem("rcpts2", JSON.stringify(h));
+}
+
+function loadHistory() {
+  const h = JSON.parse(localStorage.getItem("rcpts2") || "[]");
+  const el = document.getElementById("historyList");
+  if (!h.length) { el.innerHTML = '<div class="empty">No receipts yet</div>'; return; }
+  el.innerHTML = h.map((r, i) => `
+    <div class="hist-item" onclick="restoreReceipt(${i})" title="Click to restore">
+      <div>
+        <div class="hist-amount">${r.cur}${parseFloat(r.amt).toLocaleString()}</div>
+        <div class="hist-to">→ ${r.to}</div>
+      </div>
+      <div class="hist-date">${r.date}</div>
+    </div>
+  `).join("");
+}
+
+function restoreReceipt(i) {
+  const h = JSON.parse(localStorage.getItem("rcpts2") || "[]");
+  const r = h[i];
+  if (!r) return;
+  document.getElementById("currency").value = r.cur;
+  document.getElementById("amount").value = r.amt;
+  document.getElementById("from").value = r.from;
+  document.getElementById("to").value = r.to;
+  document.getElementById("institution").value = r.inst;
+  document.getElementById("desc").value = r.desc || "";
+  generate();
+}
+
+loadHistory();
+</script>
+
+</body>
+  </html>
